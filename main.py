@@ -100,6 +100,16 @@ rmse_values = np.zeros((num_of_observations_vec.shape[0], 9))
 for i in range(num_of_observations_vec.shape[0]):
         rmse_values[i] = computeRMSE(all_theta_est[i, :], theta.transpose())
 
+# Compute the average value and standard deviation of the estimated parameters
+# Use all N=30 observations
+avg_theta_est = np.mean(all_theta_est[-1, :, :], axis=0).reshape(9, 1)
+std_theta_est = np.std(all_theta_est[-1, :, :], axis=0).reshape(9, 1)
+
+# Make a table showing the true values, average estimated values, and standard deviation of the estimated values
+table = np.concatenate((theta, avg_theta_est, std_theta_est), axis=1)
+print("True Values, Average Estimated Values, Standard Deviation of Estimated Values")
+print(table)
+
 # Plot RMSE values for k parameters
 plt.figure(figsize=(10, 10))
 plt.plot(num_of_observations_vec, rmse_values[:, 0], label=f"RMSE $k_x$")
