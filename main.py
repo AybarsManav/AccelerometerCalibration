@@ -1,10 +1,10 @@
 import scipy.io
 import matplotlib.pyplot as plt
-#hard coded paths for now
+import numpy as np
+
 eta = scipy.io.loadmat('data/Eta.mat').get('Eta')
 theta = scipy.io.loadmat('data/Theta.mat').get('Theta')
 y = scipy.io.loadmat('data/Measurements.mat').get('Noisy_Neasurements')
-import numpy as np
 
 N = 30
 pos = 25
@@ -18,7 +18,7 @@ K_True = np.diag(theta[:3]) # 3x3 diagonal k_x, k_y, k_z
 
 T_true = np.array([[1, -theta[3], theta[4]],
               [0, 1, -theta[5]],
-              [0, 0, 1]]) # 3x3 matrix T
+              [0, 0, 1]], dtype=np.float64) # 3x3 matrix T
 
 b_true = theta[6:].reshape(-1, 1) # 3x1 bias vector
 
@@ -89,7 +89,7 @@ num_monte_carlo_iters = 5 # Since Mont = 500 takes too long debugging with this 
 all_theta_est = np.zeros((num_monte_carlo_iters, num_of_observations_vec.shape[0], 9))
 for i in range(num_monte_carlo_iters):
     for j in num_of_observations_vec:
-        all_theta_est[i, j - 1] = estimate_theta_for_single_monte_carlo(eta, y[i, :, :], j)
+        all_theta_est[i, j - 1] = np.array(estimate_theta_for_single_monte_carlo(eta, y[i, :, :], j)).flatten()
 
 def computeRMSE(theta_est, theta):
     return np.sqrt(np.mean((theta_est - theta) ** 2, axis=0))
