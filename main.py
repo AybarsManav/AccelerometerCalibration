@@ -16,9 +16,6 @@ sigma = np.sqrt(sigma)
 # True parameters
 K_True = np.diag(theta[:3]) # 3x3 diagonal k_x, k_y, k_z
 
-T_true = np.array([[1, -theta[3], theta[4]],
-              [0, 1, -theta[5]],
-              [0, 0, 1]], dtype=np.float64) # 3x3 matrix T
 
 b_true = theta[6:].reshape(-1, 1) # 3x1 bias vector
 
@@ -70,6 +67,8 @@ def build_system(eta, y_single_monte_carlo, num_observations=30):
 
 def solve_system(A, b):
     return np.linalg.pinv(A) @ b
+def solve_BLUE(H, y):
+    return np.linalg.pinv(H.T@H)@H.T@y
 
 def derive_theta_params(h):
     h00, h01, h02, h03, h11, h12, h13, h22, h23 = h
@@ -78,9 +77,12 @@ def derive_theta_params(h):
     bx = h03; by = h13; bz = h23
     return kx, ky, kz, alpha_yz, alpha_zy, alpha_zx, bx, by, bz
 
-def estimate_theta_for_single_monte_carlo(eta, y_single_monte_carlo, num_observations=30):
+def estimate_theta_for_single_monte_carlo(eta, y_single_monte_carlo, num_observations=30, type = 'MLE'):
     A, b = build_system(eta, y_single_monte_carlo, num_observations)
-    h = solve_system(A, b)
+    if type == 'MLE':
+        h = solve_system(A, b)
+    elif type == 'BLUE':
+        h = solve_BLUE(A, b)
     return derive_theta_params(h)
 
 # Find estimated parameters for different monte carlo iterations and using different number of observations
@@ -89,7 +91,7 @@ num_monte_carlo_iters = 5 # Since Mont = 500 takes too long debugging with this 
 all_theta_est = np.zeros((num_monte_carlo_iters, num_of_observations_vec.shape[0], 9))
 for i in range(num_monte_carlo_iters):
     for j in num_of_observations_vec:
-        all_theta_est[i, j - 1] = np.array(estimate_theta_for_single_monte_carlo(eta, y[i, :, :], j)).flatten()
+        all_theta_est[i, j - 1] = np.array(estimate_theta_for_single_monte_carlo(eta, y[i, :, :], j,type = 'BLUE')).flatten()
 
 def computeRMSE(theta_est, theta):
     return np.sqrt(np.mean((theta_est - theta) ** 2, axis=0))
