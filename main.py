@@ -51,16 +51,15 @@ def calc_u_single_pose(eta):
     ])
 
 # Builds Ax=b system for a single monte carlo iteration
-def build_system(eta, y_single_monte_carlo):
+def build_system(eta, y_single_monte_carlo, num_observations=30):
     num_poses = eta.shape[0]
-    num_observations = N
     # First compute u_k for all poses, uk_matrix will be 25x3
     uk_matrix = np.zeros((num_poses, 3))
     for i in range(num_poses):
         uk = calc_u_single_pose(eta[i])
         uk_matrix[i] = uk
     
-    # Now build A and b. A will be (25*30*3)x9, b will be (25*30*3)x1
+    # Now build A and b. A will be (25*num_observations*3)x9, b will be (25*num_observations*3)x1
     A = np.zeros((0, 9))
     b = np.zeros((0, 1))
     for i in range(num_poses):
@@ -79,42 +78,58 @@ def derive_theta_params(h):
     bx = h03; by = h13; bz = h23
     return kx, ky, kz, alpha_zx, alpha_yz, alpha_zy, bx, by, bz
 
-A, b = build_system(eta=eta, y_single_monte_carlo=y[0])
+def estimate_theta_for_single_monte_carlo(eta, y_single_monte_carlo, num_observations=30):
+    A, b = build_system(eta, y_single_monte_carlo, num_observations)
+    h = solve_system(A, b)
+    return derive_theta_params(h)
 
-h = solve_system(A, b)
+# Find estimated parameters for different monte carlo iterations and using different number of observations
+num_of_observations_vec = np.arange(1, 31)
+num_monte_carlo_iters = 5 # Since Mont = 500 takes too long debugging with this first.
+all_theta_est = np.zeros((num_monte_carlo_iters, num_of_observations_vec.shape[0], 9))
+for i in range(num_monte_carlo_iters):
+    for j in num_of_observations_vec:
+        all_theta_est[i, j - 1] = estimate_theta_for_single_monte_carlo(eta, y[i, :, :], j)
 
-theta_est = derive_theta_params(h)
+def computeRMSE(theta_est, theta):
+    return np.sqrt(np.mean((theta_est - theta) ** 2, axis=0))
 
-theta_all = []
+# Compute RMSE for all monte carlo iterations and number of observations
+all_theta_est = all_theta_est.transpose(1, 0, 2) # 30x500x9
+rmse_values = np.zeros((num_of_observations_vec.shape[0], 9))
+for i in range(num_of_observations_vec.shape[0]):
+        rmse_values[i] = computeRMSE(all_theta_est[i, :], theta.transpose())
 
-for i in range(Mont):
-    yk = y[i, :, :]
-    sim_theta = []
-    for mn in range(750):  # N * pos = 750
-        th_est = theta_est(yk, u[mn // N])
-        sim_theta.append(th_est)
+# Plot RMSE values for k parameters
+plt.figure(figsize=(10, 10))
+plt.plot(num_of_observations_vec, rmse_values[:, 0], label=f"RMSE $k_x$")
+plt.plot(num_of_observations_vec, rmse_values[:, 1], label=f"RMSE $k_y$")
+plt.plot(num_of_observations_vec, rmse_values[:, 2], label=f"RMSE $k_z$")
+plt.xlabel("Number of Observations")
+plt.ylabel("RMSE")
+plt.title("RMSE vs Number of Observations for k parameters")
+plt.legend()
+plt.grid(True)
 
-    theta_all.append(sim_theta)
+# Plot RMSE values for alpha parameters
+plt.figure(figsize=(10, 10))
+plt.plot(num_of_observations_vec, rmse_values[:, 3], label=r'RMSE $\alpha_{yz}$')
+plt.plot(num_of_observations_vec, rmse_values[:, 4], label=r'RMSE $\alpha_{zy}$')
+plt.plot(num_of_observations_vec, rmse_values[:, 5], label=r'RMSE $\alpha_{zx}$')
+plt.xlabel("Number of Observations")
+plt.ylabel("RMSE")
+plt.title(r'RMSE vs Number of Observations for $\alpha$ parameters')
+plt.legend()
+plt.grid(True)
 
-theta_all = np.array(theta_all)
-
-print(len(theta_all))
-
-mse_values = np.zeros((Mont, N * pos))
-
-for i in range(Mont):
-    for j in range(N * pos):
-        mse_values[i, j] = np.mean((theta_all[i, j, :] - theta) ** 2)
-
-mean_mse = np.mean(mse_values, axis=0)
-std_mse = np.std(mse_values, axis=0)
-
-plt.figure(figsize=(10, 6))
-plt.plot(np.arange(1, N * pos + 1), mean_mse, label='Mean MSE')
-plt.fill_between(np.arange(1, N * pos + 1), mean_mse - std_mse, mean_mse + std_mse, color='b', alpha=0.2, label='±1 Standard Deviation')
-plt.title('Mean MSE of Estimated Parameters (Theta) vs True Parameters')
-plt.xlabel('Number of Samples')
-plt.ylabel('Mean MSE')
+# Plot RMSE values for b parameters
+plt.figure(figsize=(10, 10))
+plt.plot(num_of_observations_vec, rmse_values[:, 6], label=f"RMSE $b_x$")
+plt.plot(num_of_observations_vec, rmse_values[:, 7], label=f"RMSE $b_y$")
+plt.plot(num_of_observations_vec, rmse_values[:, 8], label=f"RMSE $b_z$")
+plt.xlabel("Number of Observations")
+plt.ylabel("RMSE")
+plt.title("RMSE vs Number of Observations for b parameters")
 plt.legend()
 plt.grid(True)
 plt.show()
