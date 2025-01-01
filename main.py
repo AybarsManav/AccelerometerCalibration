@@ -76,7 +76,7 @@ def derive_theta_params(h):
     kx = h00; ky = h11; kz = h22
     alpha_yz = h01 / kx; alpha_zx = h12 / ky; alpha_zy = alpha_yz * alpha_zx - h02 / kx
     bx = h03; by = h13; bz = h23
-    return kx, ky, kz, alpha_zx, alpha_yz, alpha_zy, bx, by, bz
+    return kx, ky, kz, alpha_yz, alpha_zy, alpha_zx, bx, by, bz
 
 def estimate_theta_for_single_monte_carlo(eta, y_single_monte_carlo, num_observations=30):
     A, b = build_system(eta, y_single_monte_carlo, num_observations)
