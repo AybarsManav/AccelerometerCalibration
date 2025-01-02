@@ -97,13 +97,63 @@ def compute_Fisher_Information_Matrix(eta, num_observations_per_pose, standard_d
     FIM = num_observations_per_pose * FIM / (standard_dev ** 2)
     return FIM
 
-FIM = compute_Fisher_Information_Matrix(eta, 30, sigma)
-CRLB = np.linalg.inv(FIM)
-# print(CRLB)
+# FIM = compute_Fisher_Information_Matrix(eta, 30, sigma)
+# print(FIM)
+# CRLB = np.linalg.inv(FIM)
+# # Find lower bounds of each parameter by looking at the diagonal of the CRLB matrix
+# lower_bounds = np.sqrt(np.diag(CRLB))
 
-# Find lower bounds of each parameter by looking at the diagonal of the CRLB matrix
-lower_bounds = np.sqrt(np.diag(CRLB))
-# Also take the square root for it to be similar to the cited paper
-lower_bounds = np.sqrt(lower_bounds)
-print(lower_bounds)
+def compute_CRLB_for_num_observations(eta, num_observations_vec, standard_dev):
+    CRLB_vec = np.zeros((len(num_observations_vec), 9))
+    for num_observations in num_observations_vec:
+        FIM = compute_Fisher_Information_Matrix(eta, num_observations, standard_dev)
+        CRLB = np.linalg.inv(FIM)
+        np.sqrt(np.diag(CRLB))
+        CRLB_vec[num_observations - 1] = np.sqrt(np.diag(CRLB))
+    return CRLB_vec
+
+def plot_CRLB_for_different_variences(eta, num_observations, standard_dev_vec):
+    CRLB_vec = np.zeros((len(standard_dev_vec), 9))
+    for i, standard_dev in enumerate(standard_dev_vec):
+        FIM = compute_Fisher_Information_Matrix(eta, num_observations, standard_dev)
+        CRLB = np.linalg.inv(FIM)
+        CRLB_vec[i] = np.sqrt(np.diag(CRLB))
+
+    # Plot the CRLB for grouped parameters in the range of standard deviations
+    fig1, ax1 = plt.subplots(figsize=(10, 5))
+    fig2, ax2 = plt.subplots(figsize=(10, 5))
+    fig3, ax3 = plt.subplots(figsize=(10, 5))
+
+    # Plot k_x, k_y, k_z in the first figure
+    ax1.plot(standard_dev_vec, CRLB_vec[:, 0], label="$\\sqrt{CRLB_{k_x}}$", color='b')
+    ax1.plot(standard_dev_vec, CRLB_vec[:, 1], label="$\\sqrt{CRLB_{k_y}}$", color='g')
+    ax1.plot(standard_dev_vec, CRLB_vec[:, 2], label="$\\sqrt{CRLB_{k_z}}$", color='r')
+    ax1.set_title('$\\sqrt{CRLB}$ for $k_x$, $k_y$, $k_z$')
+    ax1.set_xlabel('Standard Deviation')
+    ax1.set_ylabel('$\\sqrt{CRLB}$')
+    ax1.legend()
+    ax1.grid(True)
+
+    # Plot alpha_yz, alpha_zy, alpha_zx in the second figure
+    ax2.plot(standard_dev_vec, CRLB_vec[:, 3], label="$\\sqrt{CRLB_{\\alpha_{yz}}}$", color='b')
+    ax2.plot(standard_dev_vec, CRLB_vec[:, 4], label="$\\sqrt{CRLB_{\\alpha_{zy}}}$", color='g')
+    ax2.plot(standard_dev_vec, CRLB_vec[:, 5], label="$\\sqrt{CRLB_{\\alpha_{zx}}}$", color='r')
+    ax2.set_title('$\\sqrt{CRLB}$ for $\\alpha_{yz}$, $\\alpha_{zy}$, $\\alpha_{zx}$')
+    ax2.set_xlabel('Standard Deviation')
+    ax2.set_ylabel('$\\sqrt{CRLB}$')
+    ax2.legend()
+    ax2.grid(True)
+
+    # Plot b_x, b_y, b_z in the third figure
+    ax3.plot(standard_dev_vec, CRLB_vec[:, 6], label="$\\sqrt{CRLB_{b_x}}$", color='b')
+    ax3.plot(standard_dev_vec, CRLB_vec[:, 7], label="$\\sqrt{CRLB_{b_y}}$", color='g')
+    ax3.plot(standard_dev_vec, CRLB_vec[:, 8], label="$\\sqrt{CRLB_{b_z}}$", color='r')
+    ax3.set_title('CRLB for $b_x$, $b_y$, $b_z$')
+    ax3.set_xlabel('Standard Deviation')
+    ax3.set_ylabel('CRLB')
+    ax3.legend()
+    ax3.grid(True)
+
+    plt.show()
+
 
